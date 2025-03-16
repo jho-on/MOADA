@@ -25,7 +25,7 @@ import (
 
 const (
     requestLimit = 5
-    timeLimit = time.Minute
+    timeLimit = 1 * time.Minute
 	userMaxSpace = float64(75 * (1024 * 1024)) 
 )
 
@@ -65,12 +65,11 @@ func saveFile(c *gin.Context) {
 
 	allowed := allowedTypes[typeFile]
 
-	
-
 	ip := c.Request.Header.Get("CF-Connecting-IP")
     if ip == "" {
         ip = c.ClientIP()
     }
+	
 
 	// File Validation
 	if err != nil || receivedFile == nil{
@@ -86,6 +85,17 @@ func saveFile(c *gin.Context) {
 			"error": "The uploaded file is not allowed. You can try compressing it in .rar, .zip, or .tar format, for example.",
 		})
 		return
+	}
+
+	if _, err := db.GetUser(string(utils.EncryptString(ip))); err == nil{
+		err = rateLimit(string(utils.EncryptString(ip)))
+		fmt.Printf("%v\n", err)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"erro": "error related to ratelimit",
+			})
+			return
+		}
 	}
 	
 	// Testing Virus
@@ -375,6 +385,33 @@ func deleteUser(c *gin.Context){
 	})
 }
 
+func rateLimit(ip string) error{
+	user, err := db.GetUser(ip)
+
+	if err != nil{
+		return err
+	}
+
+	
+	if time.Since(user.APILastCallDate) > timeLimit{
+		err = db.ResetRateLimit(ip)
+		if err != nil{
+			return err
+		}
+	}
+
+	if user.APICalls >= requestLimit {
+		return fmt.Errorf("the number of API calls has been exceeded")
+	}
+
+	err = db.UpdateAPIRelatedData(ip)
+
+	if err != nil {
+		return err
+	}
+	
+	return nil
+}
 
 func logUnauthorizedRequests() gin.HandlerFunc {
     return func(c *gin.Context) {

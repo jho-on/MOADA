@@ -1,3 +1,4 @@
+// Package utils provides utility functions for common operations such as email validation,
 package utils
 
 import (
@@ -12,9 +13,14 @@ import (
 	"path/filepath"
 )
 
+
+// ValidateEmail validates an email address with regexp.
+// Parameters:
+//   email (string): The email address to be validated.
+// Returns:
+//   bool: Returns `true` if the email is valid, and `false` otherwise.
 func ValidateEmail(email string) bool {
 	_, err := mail.ParseAddress(email)
-
 	if err != nil {
 		return false
 	}
@@ -23,12 +29,23 @@ func ValidateEmail(email string) bool {
 	return re.MatchString(email)
 }
 
+// EncryptString hashes the input string using SHA-256 and returns the hash in hexadecimal format.
+// Parameters:
+//   str (string): The string to be hashed.
+// Returns:
+//   string: The SHA-256 hash of the input string in hexadecimal format.
 func EncryptString(str string) string {
 	h := sha256.New()
 	h.Write([]byte(str))
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// CheckVirus scans the given file for viruses using ClamAV.
+// Parameters:
+//   filepath (string): The path to the file to be scanned for viruses.
+// Returns:
+//   bool: Returns `true` if a virus is detected, `false` otherwise.
+//   error: Returns an error if there is an issue while scanning the file, nil otherwise.
 func CheckVirus(filepath string) (bool, error) {
 	clam := clamd.NewClamd("/var/run/clamav/clamd.ctl")
 	res, err := clam.ScanFile(filepath)
@@ -46,13 +63,23 @@ func CheckVirus(filepath string) (bool, error) {
 	return false, nil // No virus
 }
 
+
+// FileExists checks if a file exists at the given filepath.
+// Parameters:
+//   filepath (string): The path to the file or directory to check.
+// Returns:
+//   bool: Returns `true` if the file or directory exists, `false` otherwise.
 func FileExists(filepath string) bool {
-
 	_, err := os.Stat(filepath)
-
 	return !os.IsNotExist(err)
 }
 
+// GetStoredFiles retrieves all file paths (not directories) from the specified directory.
+// Parameters:
+//   path (string): The directory path to search for files.
+// Returns:
+//   []string: A slice of file paths found in the directory.
+//   error: An error if the directory does not exist or if there is an issue reading the directory.
 func GetStoredFiles(path string) ([]string, error){
 	
 	var files []string
