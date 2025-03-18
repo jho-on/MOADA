@@ -11,7 +11,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/gin-contrib/cors"
-
+	
 	
 	"backend/utils"
 	"backend/db"
@@ -123,8 +123,8 @@ func saveFile(c *gin.Context) {
 		return
 	}
 	
+	// Check available space
 	user, err := db.GetUser(utils.EncryptString(ip))
-
 	if err == nil{
 		if float64(user.UsedSpace)+float64(receivedFile.Size) > userMaxSpace {
 			remainingSpace := float64((userMaxSpace - float64(user.UsedSpace)) / (1024 * 1024))
@@ -135,6 +135,7 @@ func saveFile(c *gin.Context) {
 		}
 	}
 
+	// File content reading (to encrypt for ID generation)
 	content, err := os.ReadFile(path_)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -151,12 +152,13 @@ func saveFile(c *gin.Context) {
 		return
 	}
 	
-	// Saving File
+	// Generate ID for the file
 	var newFile db.File
 	idPublic := (utils.EncryptString(string(content) + receivedFile.Filename) + string(os.Getenv("ENCRYPTION_KEY")))
 	idPrivate := (utils.EncryptString(string(content) + receivedFile.Filename) + string(os.Getenv("ENCRYPTION_KEY")) + string(os.Getenv("EXCLUSION_KEY")))
 	filePath := filepath.Join(os.Getenv("SAVE_PATH") + string(utils.EncryptString(string(ip))), utils.EncryptString(string(idPublic)) + "." + strings.Split(receivedFile.Filename, ".")[1])
 
+	// Check if the file already exists
 	if utils.FileExists(filePath) {
 		existingFile, srcErr := db.GetFileFromID(utils.EncryptString(string(idPublic)), "public")
 	
@@ -173,10 +175,9 @@ func saveFile(c *gin.Context) {
 	
 		return
 	}
-	
-	
+
+	// Save metadata to the DB
 	newFile, err = db.SaveMetadata(idPublic, idPrivate, receivedFile.Filename, email, float64(receivedFile.Size))
-	
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"erro": err,
@@ -186,18 +187,24 @@ func saveFile(c *gin.Context) {
 
 	dirPath := filepath.Dir(filePath)
 	err = os.MkdirAll(dirPath, os.ModePerm)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Error creating directory.",
 		})
 		return
 	}
-    if err := c.SaveUploadedFile(receivedFile, filePath); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"erro": "Error while saving file"})
-        return
-    }
 
+	tempFilePath := filepath.Join(os.TempDir(), "temp_" + receivedFile.Filename)
+	if err := c.SaveUploadedFile(receivedFile, tempFilePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Error while saving temporary file"})
+		return
+	}
+	defer os.Remove(tempFilePath)
+
+	if err := utils.CopyFileWithoutMetadata(tempFilePath, filePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Error processing the file"})
+		return
+	}
 	
 	if saveUser(ip, c) {
 		c.JSON(http.StatusOK, gin.H{

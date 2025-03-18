@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/mail"
+	"io"
 	"regexp"
 
 	"github.com/dutchcoders/go-clamd"
@@ -103,3 +104,32 @@ func GetStoredFiles(path string) ([]string, error){
 
 	return files, nil
 }
+
+// CopyFileWithoutMetadata copies a file from the input path to the output path without copying its metadata (e.g., timestamps, ownership).
+// Parameters:
+//   inputFilePath (string): The path to the source file.
+//   outputFilePath (string): The path to the destination file.
+// Returns:
+//   error: An error if there was a problem opening the input file, creating the output file, or copying the contents.
+func CopyFileWithoutMetadata(inputFilePath, outputFilePath string) error {
+	inputFile, err := os.Open(inputFilePath)
+	if err != nil {
+		return fmt.Errorf("error opening input file: %v", err)
+	}
+	
+	defer inputFile.Close()
+
+	outputFile, err := os.Create(outputFilePath)
+	if err != nil {
+		return fmt.Errorf("error creating output file: %v", err)
+	}
+	defer outputFile.Close()
+
+	_, err = io.Copy(outputFile, inputFile)
+	if err != nil {
+		return fmt.Errorf("error copying file: %v", err)
+	}
+
+	return nil
+}
+
