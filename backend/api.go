@@ -26,7 +26,8 @@ import (
 const (
     requestLimit = 5
     timeLimit = 1 * time.Minute
-	userMaxSpace = float64(75 * (1024 * 1024)) 
+	userMaxSpace = float64(75 * (1024 * 1024)) // 75MB per user
+	maxHostSpaceUsage = 68 * userMaxSpace// around 5GB, 68 users
 )
 
 var logFile *os.File
@@ -64,6 +65,14 @@ func saveFile(c *gin.Context) {
 	typeFile := receivedFile.Header.Get("Content-Type")
 
 	allowed := allowedTypes[typeFile]
+
+	if utils.GetFolderSize(os.Getenv("SAVE_PATH")) >= maxHostSpaceUsage {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "The host server storage capacity is full.",
+		})
+		return
+	}
+
 
 	ip := c.Request.Header.Get("CF-Connecting-IP")
     if ip == "" {
@@ -442,11 +451,15 @@ func logUnauthorizedRequests() gin.HandlerFunc {
 
 
 func main(){
+
 	
 	if err := godotenv.Load(); err != nil {
 		fmt.Print("Error loading .env" + err.Error())
 		return
 	}
+
+	
+	
 
 	db.Connect(os.Getenv("DB_URI"))
 
@@ -464,13 +477,13 @@ func main(){
         AllowCredentials: true,
     }))
 
-	router.POST("/sendFile", saveFile)
+	router.POST("/sendFile", saveFile)//
 	router.POST("/deleteFile", deleteFile)
 	router.POST("/deleteUser", deleteUser)
 
-	router.GET("/downloadFile", downloadFile)
-	router.GET("/myInfo", userInfo)
-	router.GET("/fileInfo", fileInfo)
+	router.GET("/downloadFile", downloadFile)//
+	router.GET("/myInfo", userInfo)//
+	router.GET("/fileInfo", fileInfo)//
 	
 
 	err := router.Run(":" + os.Getenv("PORT"))

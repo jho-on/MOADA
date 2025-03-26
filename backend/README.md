@@ -6,10 +6,10 @@ The fileMetadata collection stores information about files uploaded to the serve
 Document Fields:
 
     idPrivate (string):
-    A unique identifier used to request the download of the file.
+    A unique identifier used to request the deletion of the file.
 
     idPublic (string):
-    A unique identifier used to request the deletion of the file.
+    A unique identifier used to request the download of the file.
 
     name (string):
     The name of the file, including the extension (e.g., "document.pdf").
@@ -48,7 +48,7 @@ Document Fields:
     Anonymized IP address that made the upload request.
 
     files (array):
-    A list of files uploaded by this IP. Each item in the list is a fileMetadata object.
+    A list of public ids uploaded by this IP. Each item in the list is a IdPublic to some file stored.
 
     filesNumber (int):
     The total number of files currently on the server for this IP.
@@ -72,17 +72,7 @@ Example Document:
 
     {
         "ip": "192.168.1.1",
-        "files": [
-            {
-                "idPrivate": "unique-private-id",
-                "idPublic": "unique-public-id",
-                "name": "document.pdf",
-                "size": 204800,
-                "savedDate": ISODate("2025-03-15T08:00:00Z"),
-                "expireDate": ISODate("2025-03-16T08:00:00Z"),
-                "email": "user@example.com"
-            }
-        ],
+        "files": ["id1", "id2", "id3", "id4", "id5"]
         "filesNumber": 1,
         "usedSpace": 204800,
         "ipSavedDate": ISODate("2025-03-15T08:00:00Z"),

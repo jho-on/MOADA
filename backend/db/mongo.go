@@ -37,7 +37,7 @@ type File struct {
 // It contains information about the users anonymized (hashed) IP address, file data, and metadata for usage tracking.
 type User struct {
     Ip string `bson:"ip"`  // anonymized (hashed) IP address of the user
-    Files []File `bson:"files"`  // List of files associated with the user
+    Files []string `bson:"files"`  // List of public ids for files associated with the user
     FilesNumber int `bson:"filesNumber"`  // Number of files the user has uploaded
     UsedSpace float64 `bson:"usedSpace"`  // Total space consumed by the user
     IpSavedDate time.Time `bson:"ipSavedDate"`  // Date when the users IP was saved
@@ -234,7 +234,7 @@ func UserExists(ip string) bool {
 func CreateUser(ip string, DirPath string) (User, error) {
 	ChangeCollection(os.Getenv("DB_NAME"), os.Getenv("USERS_COLLECTION"))
 	
-	filesNumber, usedSpace, files, err := getFilesFromDir(DirPath)
+	filesNumber, usedSpace, ids, err := getFilesFromDir(DirPath)
 	
 	if err != nil {
 		return User{}, err
@@ -242,7 +242,7 @@ func CreateUser(ip string, DirPath string) (User, error) {
 	
 	newUser := User{
 		Ip: ip,
-		Files: files,
+		Files: ids,
 		FilesNumber: filesNumber,
 		UsedSpace: usedSpace,
 		IpSavedDate: time.Now(),
@@ -271,7 +271,7 @@ func CreateUser(ip string, DirPath string) (User, error) {
 //   error: Returns nil if the update is successful, or an error message if something goes wrong.
 func UpdateUser(ip string, DirPath string) error {
 	ChangeCollection(os.Getenv("DB_NAME"), os.Getenv("USERS_COLLECTION"))
-	filesNumber, usedSpace, files, err := getFilesFromDir(DirPath)
+	filesNumber, usedSpace, ids, err := getFilesFromDir(DirPath)
 	
 	if err != nil {
 		return err
@@ -281,7 +281,7 @@ func UpdateUser(ip string, DirPath string) error {
 
 	update := bson.D{
 		{Key: "$set", Value: bson.D{
-			{Key: "files", Value: files},
+			{Key: "files", Value: ids},
 			{Key: "filesNumber", Value: filesNumber},
 			{Key: "usedSpace", Value: usedSpace},
 			{Key: "ipExpireDate", Value: time.Now().AddDate(0, 0, 1)},
@@ -366,33 +366,33 @@ func ResetRateLimit(ip string) error{
 //   usedSpace (float64): The total size in bytes of all files in the directory.
 //   files ([]File): A list of File objects representing metadata for each file.
 //   error: Returns an error if any issue occurs during processing.
-func getFilesFromDir(DirPath string) (int, float64, []File, error) {
+func getFilesFromDir(DirPath string) (int, float64, []string, error) {
 	ChangeCollection(os.Getenv("DB_NAME"), os.Getenv("FILES_COLLECTION"))
 	godotenv.Load()
 
 	filesArray, err := utils.GetStoredFiles(DirPath)
 	var filesNumber int
 	var usedSpace float64
-	var files []File
+	var ids []string
 
 	if err != nil {
-		return 0, 0.0, []File{}, fmt.Errorf("error accessing user's directory")
+		return 0, 0.0, []string{}, fmt.Errorf("error accessing user's directory")
 	}
 	
 	for _, arq := range filesArray {
 		IdPublic := strings.Split((filepath.Base(arq)), ".")[0]
 		fileNow, err := GetFileFromID(IdPublic, "public")
 		if err != nil {
-			return 0, 0.0, []File{}, fmt.Errorf("error retrieving file from ID %s: %v", IdPublic, err)
+			return 0, 0.0, []string{}, fmt.Errorf("error retrieving file from ID %s: %v", IdPublic, err)
 		}
 
-		files = append(files, fileNow)
+		ids = append(ids, fileNow.IdPublic)
 		filesNumber += 1
 		usedSpace += fileNow.Size
 	}
 
 	ChangeCollection(os.Getenv("DB_NAME"), os.Getenv("USERS_COLLECTION"))
-	return filesNumber, usedSpace, files, nil
+	return filesNumber, usedSpace, ids, nil
 }
 
 // GetUser retrieves the user data from the database based on the provided IP address.
@@ -430,18 +430,23 @@ func DeleteUser(ip string) error {
 	}
 
 	for _, value := range user.Files {
+		file, err := GetFileFromID(value, "public")
 
-		_, err = DeleteFile(value.IdPrivate)
-		fmt.Printf("%v\n", err)
 		if err != nil {
 			return err
 		}
-		path_ := filepath.Join(os.Getenv("SAVE_PATH") + ip)
 
-		err = os.RemoveAll(path_)
+		_, err = DeleteFile(file.IdPrivate)
 		if err != nil {
-			return fmt.Errorf("error deleting files from system")
+			return err
 		}
+	}
+	
+	path_ := filepath.Join(os.Getenv("SAVE_PATH") + ip)
+
+	err = os.RemoveAll(path_)
+	if err != nil {
+		return fmt.Errorf("error deleting files from system")
 	}
 
 	ChangeCollection(os.Getenv("DB_NAME"), os.Getenv("USERS_COLLECTION"))

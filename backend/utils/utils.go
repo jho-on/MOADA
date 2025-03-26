@@ -15,6 +15,7 @@ import (
 )
 
 
+
 // ValidateEmail validates an email address with regexp.
 // Parameters:
 //   email (string): The email address to be validated.
@@ -30,6 +31,7 @@ func ValidateEmail(email string) bool {
 	return re.MatchString(email)
 }
 
+
 // EncryptString hashes the input string using SHA-256 and returns the hash in hexadecimal format.
 // Parameters:
 //   str (string): The string to be hashed.
@@ -40,6 +42,7 @@ func EncryptString(str string) string {
 	h.Write([]byte(str))
 	return hex.EncodeToString(h.Sum(nil))
 }
+
 
 // CheckVirus scans the given file for viruses using ClamAV.
 // Parameters:
@@ -75,6 +78,7 @@ func FileExists(filepath string) bool {
 	return !os.IsNotExist(err)
 }
 
+
 // GetStoredFiles retrieves all file paths (not directories) from the specified directory.
 // Parameters:
 //   path (string): The directory path to search for files.
@@ -105,6 +109,7 @@ func GetStoredFiles(path string) ([]string, error){
 	return files, nil
 }
 
+
 // CopyFileWithoutMetadata copies a file from the input path to the output path without copying its metadata (e.g., timestamps, ownership).
 // Parameters:
 //   inputFilePath (string): The path to the source file.
@@ -133,3 +138,23 @@ func CopyFileWithoutMetadata(inputFilePath, outputFilePath string) error {
 	return nil
 }
 
+// GetFolderSize walks through the specified directory and calculates the total size of all files and subdirectories inside it
+// Parameters:
+//   path (string): The path to the directory to be checked.
+// Returns:
+//   float64: The total size of the directory in bytes.
+func GetFolderSize(path string) float64 {
+    var dirSize float64 = 0
+
+    readSize := func(path string, file os.FileInfo, err error) error {
+        if !file.IsDir() {
+            dirSize += float64(file.Size())
+        }
+
+        return nil
+    }
+
+    filepath.Walk(path, readSize)
+
+    return float64(dirSize)
+}
