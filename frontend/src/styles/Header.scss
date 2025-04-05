@@ -1,0 +1,29 @@
+.header{
+    background-color: var(--textColor);
+    color: var(--backgroudColor);
+    padding: var(--paddingMd);
+
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    height: 8dvh;
+
+    h1 {
+        font-family: "IBM Plex Serif";
+        font-size: var(--textSizeXl);
+        font-weight: bold;
+        margin: 0;
+    }
+
+    .linkWrapper{
+        display: flex;
+        flex-direction: row;
+        gap: var(--gapMd);
+
+        img{
+            max-width: 50px;
+        }
+    }
+    
+}

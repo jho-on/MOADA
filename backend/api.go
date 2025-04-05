@@ -2,19 +2,19 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"os"
+
 	"github.com/joho/godotenv"
 
 	"github.com/gin-contrib/cors"
-	
-	
-	"backend/utils"
+
 	"backend/db"
+	"backend/utils"
 
 	"path/filepath"
 	"time"
@@ -22,33 +22,32 @@ import (
 	"log"
 )
 
-
 const (
-    requestLimit = 5
-    timeLimit = 1 * time.Minute
-	userMaxSpace = float64(75 * (1024 * 1024)) // 75MB per user
-	maxHostSpaceUsage = 68 * userMaxSpace// around 5GB, 68 users
+	requestLimit      = 5
+	timeLimit         = 1 * time.Minute
+	userMaxSpace      = float64(75 * (1024 * 1024)) // 75MB per user
+	maxHostSpaceUsage = 68 * userMaxSpace           // around 5GB, 68 users
 )
 
 var logFile *os.File
 var allowedTypes = map[string]bool{
-    "image/jpeg":                true,
-    "image/jpg":                 true,
-    "image/png":                 true,
-    "image/gif":                 true,
+	"image/jpeg": true,
+	"image/jpg":  true,
+	"image/png":  true,
+	"image/gif":  true,
 
-    "application/pdf":           true,
-    "application/json":          true,
+	"application/pdf":  true,
+	"application/json": true,
 
-    "application/zip":           true,
-    "application/x-tar":         true,
-    "application/x-rar-compressed": true,
+	"application/zip":              true,
+	"application/x-tar":            true,
+	"application/x-rar-compressed": true,
 
-    "text/plain":               true,
+	"text/plain": true,
 
-    "audio/mpeg":                true,
-    "audio/x-wav":               true,
-    "audio/x-flac":              true,
+	"audio/mpeg":   true,
+	"audio/x-wav":  true,
+	"audio/x-flac": true,
 }
 
 func init() {
@@ -58,7 +57,7 @@ func init() {
 		log.Fatalf("Error opening log file: %v", err)
 	}
 }
-	
+
 func saveFile(c *gin.Context) {
 	receivedFile, err := c.FormFile("file")
 	email := c.DefaultPostForm("email", "")
@@ -73,15 +72,13 @@ func saveFile(c *gin.Context) {
 		return
 	}
 
-
 	ip := c.Request.Header.Get("CF-Connecting-IP")
-    if ip == "" {
-        ip = c.ClientIP()
-    }
-	
+	if ip == "" {
+		ip = c.ClientIP()
+	}
 
 	// File Validation
-	if err != nil || receivedFile == nil{
+	if err != nil || receivedFile == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Error receiving file.",
 		})
@@ -96,7 +93,7 @@ func saveFile(c *gin.Context) {
 		return
 	}
 
-	if _, err := db.GetUser(string(utils.EncryptString(ip))); err == nil{
+	if _, err := db.GetUser(string(utils.EncryptString(ip))); err == nil {
 		err = rateLimit(string(utils.EncryptString(ip)))
 		fmt.Printf("%v\n", err)
 		if err != nil {
@@ -106,17 +103,17 @@ func saveFile(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	// Testing Virus
 	path_ := filepath.Join(os.TempDir(), strings.Split(receivedFile.Filename, ".")[0])
-    if err = c.SaveUploadedFile(receivedFile, path_); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{
-            "erro": "Error saving the file temporarily",
-        })
-        return
-    }
-    defer os.Remove(path_) 
-	
+	if err = c.SaveUploadedFile(receivedFile, path_); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"erro": "Error saving the file temporarily",
+		})
+		return
+	}
+	defer os.Remove(path_)
+
 	hasVirus, err := utils.CheckVirus(path_)
 	if err != nil && !hasVirus {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -124,17 +121,17 @@ func saveFile(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	if hasVirus {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "The system detected the file as infected with a virus.",
 		})
 		return
 	}
-	
+
 	// Check available space
 	user, err := db.GetUser(utils.EncryptString(ip))
-	if err == nil{
+	if err == nil {
 		if float64(user.UsedSpace)+float64(receivedFile.Size) > userMaxSpace {
 			remainingSpace := float64((userMaxSpace - float64(user.UsedSpace)) / (1024 * 1024))
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -152,7 +149,7 @@ func saveFile(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// Validating Email
 	if !utils.ValidateEmail(email) && email != "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -160,17 +157,17 @@ func saveFile(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// Generate ID for the file
 	var newFile db.File
-	idPublic := (utils.EncryptString(string(content) + receivedFile.Filename) + string(os.Getenv("ENCRYPTION_KEY")))
-	idPrivate := (utils.EncryptString(string(content) + receivedFile.Filename) + string(os.Getenv("ENCRYPTION_KEY")) + string(os.Getenv("EXCLUSION_KEY")))
-	filePath := filepath.Join(os.Getenv("SAVE_PATH") + string(utils.EncryptString(string(ip))), utils.EncryptString(string(idPublic)) + "." + strings.Split(receivedFile.Filename, ".")[1])
+	idPublic := (utils.EncryptString(string(content)+receivedFile.Filename) + string(os.Getenv("ENCRYPTION_KEY")))
+	idPrivate := (utils.EncryptString(string(content)+receivedFile.Filename) + string(os.Getenv("ENCRYPTION_KEY")) + string(os.Getenv("EXCLUSION_KEY")))
+	filePath := filepath.Join(os.Getenv("SAVE_PATH")+string(utils.EncryptString(string(ip))), utils.EncryptString(string(idPublic))+"."+strings.Split(receivedFile.Filename, ".")[1])
 
 	// Check if the file already exists
 	if utils.FileExists(filePath) {
 		existingFile, srcErr := db.GetFileFromID(utils.EncryptString(string(idPublic)), "public")
-	
+
 		if srcErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "The file is already on the server, but it could not be found. " + srcErr.Error(),
@@ -181,7 +178,7 @@ func saveFile(c *gin.Context) {
 				"data":  existingFile,
 			})
 		}
-	
+
 		return
 	}
 
@@ -203,7 +200,7 @@ func saveFile(c *gin.Context) {
 		return
 	}
 
-	tempFilePath := filepath.Join(os.TempDir(), "temp_" + receivedFile.Filename)
+	tempFilePath := filepath.Join(os.TempDir(), "temp_"+receivedFile.Filename)
 	if err := c.SaveUploadedFile(receivedFile, tempFilePath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Error while saving temporary file"})
 		return
@@ -214,25 +211,25 @@ func saveFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Error processing the file"})
 		return
 	}
-	
+
 	if saveUser(ip, c) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "File saved successfully",
-			"data": newFile,
+			"data":    newFile,
 		})
 	} else {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to create new user",
 		})
-	}	
+	}
 }
 
-func deleteFile(c *gin.Context){
+func deleteFile(c *gin.Context) {
 	idPrivate := c.DefaultPostForm("idPrivate", "0")
 	ip := c.Request.Header.Get("CF-Connecting-IP")
-    if ip == "" {
-        ip = c.ClientIP()
-    }
+	if ip == "" {
+		ip = c.ClientIP()
+	}
 
 	if idPrivate == "0" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -240,7 +237,7 @@ func deleteFile(c *gin.Context){
 		})
 		return
 	}
-	
+
 	file, err := db.DeleteFile(idPrivate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -248,9 +245,9 @@ func deleteFile(c *gin.Context){
 		})
 		return
 	}
-	
-	path_ := filepath.Join(os.Getenv("SAVE_PATH") + string(utils.EncryptString(string(ip))), string(file.IdPublic) + "." + strings.Split(file.Name, ".")[1])
-	
+
+	path_ := filepath.Join(os.Getenv("SAVE_PATH")+string(utils.EncryptString(string(ip))), string(file.IdPublic)+"."+strings.Split(file.Name, ".")[1])
+
 	err = os.Remove(path_)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -258,8 +255,6 @@ func deleteFile(c *gin.Context){
 		})
 		return
 	}
-	
-	
 
 	if saveUser(ip, c) {
 		c.JSON(http.StatusOK, gin.H{
@@ -269,16 +264,16 @@ func deleteFile(c *gin.Context){
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to update user data",
 		})
-	}	
-	
+	}
+
 }
 
-func downloadFile(c *gin.Context){
+func downloadFile(c *gin.Context) {
 	idPublic := c.DefaultQuery("idPublic", "0")
 	ip := c.Request.Header.Get("CF-Connecting-IP")
-    if ip == "" {
-        ip = c.ClientIP()
-    }
+	if ip == "" {
+		ip = c.ClientIP()
+	}
 
 	if idPublic == "0" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -286,7 +281,7 @@ func downloadFile(c *gin.Context){
 		})
 		return
 	}
-	
+
 	file, err := db.GetFileFromID(idPublic, "public")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -294,40 +289,42 @@ func downloadFile(c *gin.Context){
 		})
 		return
 	}
-	
-	path_ := filepath.Join(os.Getenv("SAVE_PATH") + string(utils.EncryptString(string(ip))), string(file.IdPublic) + "." + strings.Split(file.Name, ".")[1])
-	
+	fmt.Printf("%v", file.Name)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", file.Name))
+
+	path_ := filepath.Join(os.Getenv("SAVE_PATH")+string(utils.EncryptString(string(ip))), string(file.IdPublic)+"."+strings.Split(file.Name, ".")[1])
+
 	if !utils.FileExists(path_) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "File not found",
 		})
 		return
 	}
-	
+
 	c.File(path_)
 }
 
-func saveUser(ip string, c *gin.Context) (bool){
+func saveUser(ip string, c *gin.Context) bool {
 
 	if !db.UserExists(utils.EncryptString(ip)) {
-		
-		newUser, err := db.CreateUser(utils.EncryptString(ip), filepath.Join(os.Getenv("SAVE_PATH") + string(utils.EncryptString(ip))))
-		
+
+		_, err := db.CreateUser(utils.EncryptString(ip), filepath.Join(os.Getenv("SAVE_PATH")+string(utils.EncryptString(ip))))
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"erro": err,
 			})
 			return false
 		}
-		
-		c.JSON(http.StatusOK, gin.H{
-			"message": "User created successfully",
-			"user":    newUser,
-		})
-		
-	
-	}else{
-		err := db.UpdateUser(utils.EncryptString(ip), filepath.Join(os.Getenv("SAVE_PATH") + string(utils.EncryptString(ip))))
+
+		return true
+		// c.JSON(http.StatusOK, gin.H{
+		// 	"message": "User created successfully",
+		// 	"user":    newUser,
+		// })
+
+	} else {
+		err := db.UpdateUser(utils.EncryptString(ip), filepath.Join(os.Getenv("SAVE_PATH")+string(utils.EncryptString(ip))))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"erro": err,
@@ -338,11 +335,11 @@ func saveUser(ip string, c *gin.Context) (bool){
 	return true
 }
 
-func userInfo(c *gin.Context){
+func userInfo(c *gin.Context) {
 	ip := c.Request.Header.Get("CF-Connecting-IP")
-    if ip == "" {
-        ip = c.ClientIP()
-    }
+	if ip == "" {
+		ip = c.ClientIP()
+	}
 
 	user, err := db.GetUser(string(utils.EncryptString(ip)))
 
@@ -358,10 +355,10 @@ func userInfo(c *gin.Context){
 	})
 }
 
-func fileInfo(c *gin.Context){
+func fileInfo(c *gin.Context) {
 	idPrivate := c.DefaultQuery("idPrivate", "0")
 
-	if idPrivate == "0"{
+	if idPrivate == "0" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"erro": "The 'idPrivate' parameter was not provided or is invalid.",
 		})
@@ -381,11 +378,11 @@ func fileInfo(c *gin.Context){
 	})
 }
 
-func deleteUser(c *gin.Context){
+func deleteUser(c *gin.Context) {
 	ip := c.Request.Header.Get("CF-Connecting-IP")
-    if ip == "" {
-        ip = c.ClientIP()
-    }
+	if ip == "" {
+		ip = c.ClientIP()
+	}
 
 	err := db.DeleteUser(string(utils.EncryptString(ip)))
 
@@ -401,17 +398,16 @@ func deleteUser(c *gin.Context){
 	})
 }
 
-func rateLimit(ip string) error{
+func rateLimit(ip string) error {
 	user, err := db.GetUser(ip)
 
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
-	
-	if time.Since(user.APILastCallDate) > timeLimit{
+	if time.Since(user.APILastCallDate) > timeLimit {
 		err = db.ResetRateLimit(ip)
-		if err != nil{
+		if err != nil {
 			return err
 		}
 	}
@@ -425,69 +421,63 @@ func rateLimit(ip string) error{
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
 func logUnauthorizedRequests() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        origin := c.Request.Header.Get("Origin")
+	return func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
 
-        if origin != os.Getenv("ALLOWED_ORIGIN") {
-            logMessage := fmt.Sprintf("[%s] Unauthorized request from: %s - Method: %s - Path: %s\n",
-                time.Now().Format(time.RFC3339),
-                origin,
-                c.Request.Method,
-                c.Request.URL.Path,
-            )
+		if origin != os.Getenv("ALLOWED_ORIGIN") {
+			logMessage := fmt.Sprintf("[%s] Unauthorized request from: %s - Method: %s - Path: %s\n",
+				time.Now().Format(time.RFC3339),
+				origin,
+				c.Request.Method,
+				c.Request.URL.Path,
+			)
 
-            if _, err := logFile.WriteString(logMessage); err != nil {
-                log.Printf("Error writing to the log file: %v", err)
-            }
-        }
-        c.Next()
-    }
+			if _, err := logFile.WriteString(logMessage); err != nil {
+				log.Printf("Error writing to the log file: %v", err)
+			}
+		}
+		c.Next()
+	}
 }
 
+func main() {
 
-func main(){
-
-	
 	if err := godotenv.Load(); err != nil {
 		fmt.Print("Error loading .env" + err.Error())
 		return
 	}
-
-	
-	
 
 	db.Connect(os.Getenv("DB_URI"))
 
 	router := gin.Default()
 
 	router.Use(logUnauthorizedRequests())
-	router.Use(gin.Logger()) 
-    router.Use(gin.Recovery()) 
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
 
-    router.Use(cors.New(cors.Config{
-        AllowOrigins: []string{os.Getenv("ALLOWED_ORIGIN")},
-        AllowMethods: []string{"GET", "POST"},
-        AllowHeaders: []string{"Origin", "Content-Type"},
-		ExposeHeaders: []string{"Content-Length"},
-        AllowCredentials: true,
-    }))
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{os.Getenv("ALLOWED_ORIGIN")},
+		AllowMethods:     []string{"GET", "POST"},
+		AllowHeaders:     []string{"Origin", "Content-Type"},
+		ExposeHeaders:    []string{"Content-Length", "Content-Disposition"},
+		AllowCredentials: true,
+	}))
 
-	router.POST("/sendFile", saveFile)//
+	router.POST("/sendFile", saveFile) //
 	router.POST("/deleteFile", deleteFile)
 	router.POST("/deleteUser", deleteUser)
 
-	router.GET("/downloadFile", downloadFile)//
-	router.GET("/myInfo", userInfo)//
-	router.GET("/fileInfo", fileInfo)//
-	
+	router.GET("/downloadFile", downloadFile) //
+	router.GET("/myInfo", userInfo)           //
+	router.GET("/fileInfo", fileInfo)         //
 
 	err := router.Run(":" + os.Getenv("PORT"))
 	if err != nil {
-        log.Fatalf("Fail in server init: %v", err)
-    }
+		log.Fatalf("Fail in server init: %v", err)
+	}
 }
