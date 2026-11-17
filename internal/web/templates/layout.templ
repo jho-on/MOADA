@@ -1,0 +1,19 @@
+package templates
+
+templ Layout(title string, body templ.Component) {
+	<!DOCTYPE html>
+	<html lang="pt-BR">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="description" content="MOADA — armazenamento privado com criptografia ponta a ponta."/>
+			<title>{ title }</title>
+			<link rel="stylesheet" href="/static/css/app.css"/>
+			<script src="/static/vendor/htmx.min.js" defer></script>
+			<script type="module" src="/static/js/app.js"></script>
+		</head>
+		<body>
+			@body
+		</body>
+	</html>
+}

@@ -1,0 +1,47 @@
+name: moada
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-moada}
+      POSTGRES_USER: ${POSTGRES_USER:-moada}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moada}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  garage:
+    image: dxflrs/garage:v2.5.0
+    restart: unless-stopped
+    entrypoint: ["/garage"]
+    command: ["server", "--single-node", "--default-bucket"]
+    environment:
+      GARAGE_DEFAULT_ACCESS_KEY: ${MOADA_S3_ACCESS_KEY:-GK7f3a9c2e5b1d8f4a6c0e9b3d7a1f5c8e}
+      GARAGE_DEFAULT_SECRET_KEY: ${MOADA_S3_SECRET_KEY:-db13155a608a27bf48a39b1d0ca781fd0f6bac4728535be440a8a08a2ad20dee}
+      GARAGE_DEFAULT_BUCKET: ${MOADA_S3_BUCKET:-moada-dev}
+    ports:
+      - "127.0.0.1:3900:3900"
+      - "127.0.0.1:3903:3903"
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  postgres-data:
+  garage-meta:
+  garage-data:

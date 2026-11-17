@@ -1,0 +1,23 @@
+.env
+
+# Build output
+/bin/
+/dist/
+
+# Test output
+coverage.out
+coverage.html
+*.test
+
+# Local tooling
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local planning notes
+/dev-notes/
+
+# Local infrastructure data (named Docker volumes are used by default)
+deploy/garage/data/
+deploy/garage/meta/
