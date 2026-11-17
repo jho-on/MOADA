@@ -1,0 +1,30 @@
+# Development-only Garage configuration.
+#
+# The secrets in this file are intentionally public and must never be used in
+# production. Production uses its own configuration supplied outside the
+# repository.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+replication_factor = 1
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+rpc_secret = "db13155a608a27bf48a39b1d0ca781fd0f6bac4728535be440a8a08a2ad20dee"
+metadata_auto_snapshot_interval = "24h"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+public_endpoint = "http://localhost:3900"
+
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".web.garage.localhost"
+index = "index.html"
+
+[admin]
+api_bind_addr = "[::]:3903"
+admin_token = "y4ni+BS+ESwS60ILMWlqmxhsZqqnGdus68cntznTCsE="
+metrics_token = "RHsNduu2oz86Ok06Dzj5q3jBih2iHLRZpe7x1t94H6Y="

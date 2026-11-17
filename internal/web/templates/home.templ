@@ -1,0 +1,27 @@
+package templates
+
+templ HomePage() {
+	@Layout("MOADA", homeContent())
+}
+
+templ homeContent() {
+	<div>
+		<header>
+			<h1>MOADA</h1>
+		</header>
+		<main>
+			
+			<p>Armazenamento em nuvem com criptografia de ponta a ponta.</p>
+
+			<h2>Status dos serviços</h2>
+			<div id="status" hx-get="/partials/status" hx-trigger="load, every 30s" hx-swap="innerHTML">
+				<p>Verificando…</p>
+			</div>
+			<p>
+				<button type="button" hx-get="/partials/status" hx-target="#status" hx-swap="innerHTML">
+					Atualizar
+				</button>
+			</p>
+		</main>
+	</div>
+}

@@ -1,0 +1,18 @@
+package templates
+
+templ StatusPanel(view StatusView) {
+	<p>{ view.StatusLabel() }</p>
+	<ul>
+		for _, component := range view.Components {
+			<li>
+				{ component.Label() }:
+				if component.Healthy {
+					Operacional
+				} else {
+					Indisponível
+				}
+			</li>
+		}
+	</ul>
+	<p>Última verificação: { view.CheckedAtLabel() }</p>
+}
